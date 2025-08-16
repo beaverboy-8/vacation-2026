@@ -60,109 +60,122 @@
   </div>
 
   <script>
-    const FORM = document.getElementById('voteForm');
-    const OTHER_WRAP = document.getElementById('otherWrap');
-    const OTHER_TEXT = document.getElementById('otherText');
-    const STATUS = document.getElementById('status');
-    const BTN = document.getElementById('submitBtn');
-    const NOTICE = document.getElementById('notice');
-    const VOTE_KEY = 'vacay2026_voted';
-    const CAP = 12;
+  const FORM = document.getElementById('voteForm');
+  const OTHER_WRAP = document.getElementById('otherWrap');
+  const OTHER_TEXT = document.getElementById('otherText');
+  const STATUS = document.getElementById('status');
+  const BTN = document.getElementById('submitBtn');
+  const NOTICE = document.getElementById('notice');
 
-    function setNotice(msg, ok=false) {
-      NOTICE.textContent = msg;
-      NOTICE.className = 'notice ' + (ok ? 'ok' : 'err');
+  let CAP = 13;             // default; replaced by server
+  let CURRENT_ROUND = 1;    // replaced by server
+  const VOTE_PREFIX = 'vacay2026_voted_r';
+  const cookieHas = (name) => document.cookie.split('; ').some(c => c.startsWith(name + '='));
+
+  const currentVoteKey = () => VOTE_PREFIX + CURRENT_ROUND;
+
+  function setNotice(msg, ok=false) {
+    NOTICE.textContent = msg;
+    NOTICE.className = 'notice ' + (ok ? 'ok' : 'err');
+  }
+
+  function showOther(show) {
+    OTHER_WRAP.style.display = show ? 'block' : 'none';
+    if (!show) OTHER_TEXT.value = '';
+  }
+
+  function getSelected() {
+    const el = document.querySelector('input[name="dest"]:checked');
+    return el?.value || null;
+  }
+
+  function disableForm() {
+    BTN.disabled = true;
+    FORM.querySelectorAll('input').forEach(i => i.disabled = true);
+  }
+
+  function checkLock() {
+    const key = currentVoteKey();
+    if (localStorage.getItem(key) || cookieHas(key)) {
+      disableForm();
+      setNotice("You've already submitted a vote for this round. Thanks! 😊", true);
+      return true;
     }
+    return false;
+  }
 
-    function showOther(show) {
-      OTHER_WRAP.style.display = show ? 'block' : 'none';
-      if (!show) OTHER_TEXT.value = '';
-    }
-
-    function getSelected() {
-      const el = document.querySelector('input[name="dest"]:checked');
-      return el?.value || null;
-    }
-
-    function disableForm() {
-      BTN.disabled = true;
-      FORM.querySelectorAll('input').forEach(i => i.disabled = true);
-    }
-
-    function enableForm() {
-      BTN.disabled = false;
-      FORM.querySelectorAll('input').forEach(i => i.disabled = false);
-    }
-
-    async function refreshCount() {
-      try {
-        const res = await fetch('/.netlify/functions/stats', { cache: 'no-store' });
-        const data = await res.json();
-        STATUS.textContent = `${data.total}/12 submitted`;
-        if (data.total >= CAP) {
-          disableForm();
-          setNotice('Voting is closed — the cap of 12 votes has been reached.', true);
-        }
-      } catch(e) {
-        console.error(e);
-      }
-    }
-
-    document.querySelectorAll('input[name="dest"]').forEach(r => {
-      r.addEventListener('change', () => showOther(r.value === 'Other'));
-    });
-
-    (async () => {
-      await refreshCount();
-      if (localStorage.getItem(VOTE_KEY) || document.cookie.includes('vacay2026_voted=1')) {
+  async function refreshCount() {
+    try {
+      const res = await fetch('/.netlify/functions/stats', { cache: 'no-store' });
+      const data = await res.json();
+      CAP = data.cap || CAP;
+      CURRENT_ROUND = data.round || CURRENT_ROUND;
+      STATUS.textContent = `${data.total}/${CAP} submitted`;
+      checkLock();
+      if (data.total >= CAP) {
         disableForm();
-        setNotice('You\'ve already submitted a vote from this browser. Thanks! 😊', true);
+        setNotice(`Voting is closed — the cap of ${CAP} votes has been reached.`, true);
       }
-    })();
+    } catch(e) { console.error(e); }
+  }
 
-    FORM.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const choice = getSelected();
-      if (!choice) return;
-      let otherText = '';
-      if (choice === 'Other') {
-        otherText = (OTHER_TEXT.value || '').trim();
-        if (!otherText) { setNotice('Please type your destination for "Other".'); return; }
-      }
+  // Show/Hide "Other" text input
+  document.querySelectorAll('input[name="dest"]').forEach(r => {
+    r.addEventListener('change', () => showOther(r.value === 'Other'));
+  });
 
-      BTN.disabled = true;
-      setNotice('Submitting…');
-      try {
-        const res = await fetch('/.netlify/functions/vote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ choice, otherText })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          if (res.status === 409) {
-            setNotice('Voting is closed — the cap of 12 votes has been reached.');
-          } else if (res.status === 429) {
-            setNotice('This browser already voted.');
-          } else {
-            setNotice(data.message || 'Something went wrong. Please try again.');
-          }
-          BTN.disabled = false;
-          await refreshCount();
-          return;
+  // On load
+  (async () => {
+    await refreshCount();
+  })();
+
+  FORM.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const choice = getSelected();
+    if (!choice) return;
+    let otherText = '';
+    if (choice === 'Other') {
+      otherText = (OTHER_TEXT.value || '').trim();
+      if (!otherText) { setNotice('Please type your destination for "Other".'); return; }
+    }
+
+    BTN.disabled = true;
+    setNotice('Submitting…');
+    try {
+      const res = await fetch('/.netlify/functions/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ choice, otherText })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 409) {
+          setNotice(`Voting is closed — the cap of ${CAP} votes has been reached.`);
+        } else if (res.status === 429) {
+          setNotice('This browser already voted.');
+        } else {
+          setNotice(data.message || 'Something went wrong. Please try again.');
         }
-
-        localStorage.setItem(VOTE_KEY, '1');
-        document.cookie = 'vacay2026_voted=1; Path=/; Max-Age=31536000; SameSite=Lax';
-        setNotice('Thanks — your vote was recorded! 🎉', true);
-        disableForm();
-        STATUS.textContent = `${data.total}/12 submitted`;
-      } catch (e) {
-        console.error(e);
-        setNotice('Network error. Please try again.');
         BTN.disabled = false;
+        await refreshCount();
+        return;
       }
-    });
-  </script>
+
+      // Success — lock this browser for the current round
+      const key = currentVoteKey();
+      localStorage.setItem(key, '1');
+      document.cookie = `${key}=1; Path=/; Max-Age=31536000; SameSite=Lax`;
+
+      setNotice('Thanks — your vote was recorded! 🎉', true);
+      disableForm();
+      STATUS.textContent = `${data.total}/${CAP} submitted`;
+    } catch (e) {
+      console.error(e);
+      setNotice('Network error. Please try again.');
+      BTN.disabled = false;
+    }
+  });
+</script>
+
 </body>
 </html>
