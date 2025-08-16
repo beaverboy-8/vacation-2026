@@ -31,7 +31,12 @@
     .notice { margin-top: 10px; font-size: 14px; color: var(--muted); }
     .ok { color: #77f3c9; }
     .err { color: #ff8a8a; }
-    .beaver { width: 140px; height: auto; display: block; margin: 0 auto 14px; }
+    .beaver {
+  width: clamp(240px, 36vw, 460px); /* bigger, scales on desktop/mobile */
+  height: auto;
+  display: block;
+  margin: 0 auto 16px;
+}
   </style>
 </head>
 <body>
