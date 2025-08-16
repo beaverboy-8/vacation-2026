@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220" role="img" aria-label="Beaver mascot">
+  <defs>
+    <style>
+      .fur{fill:#7b4b2f}
+      .fur2{fill:#9b6a47}
+      .belly{fill:#b88662}
+      .tail{fill:#4b3a2e}
+      .eye{fill:#1b1b1b}
+      .nose{fill:#2a2a2a}
+      .tooth{fill:#fff}
+      .line{stroke:#000;stroke-opacity:.15;stroke-width:2}
+    </style>
+    <pattern id="grid" width="12" height="12" patternUnits="userSpaceOnUse">
+      <path d="M0 0 L12 12 M12 0 L0 12" class="line" fill="none"/>
+    </pattern>
+  </defs>
+
+  <!-- tail -->
+  <g transform="translate(188,122) rotate(-6)">
+    <ellipse class="tail" cx="52" cy="28" rx="52" ry="34"/>
+    <ellipse fill="url(#grid)" opacity=".35" cx="52" cy="28" rx="50" ry="32"/>
+  </g>
+
+  <!-- body -->
+  <ellipse class="fur" cx="120" cy="130" rx="70" ry="55"/>
+  <ellipse class="belly" cx="120" cy="146" rx="36" ry="28"/>
+
+  <!-- head -->
+  <ellipse class="fur" cx="160" cy="95" rx="52" ry="46"/>
+  <circle class="fur2" cx="133" cy="92" r="10"/>
+  <circle class="fur2" cx="187" cy="92" r="10"/>
+
+  <!-- ears -->
+  <circle class="fur" cx="135" cy="63" r="10"/>
+  <circle class="fur" cx="185" cy="63" r="10"/>
+
+  <!-- eyes -->
+  <circle class="eye" cx="146" cy="90" r="5"/>
+  <circle class="eye" cx="174" cy="90" r="5"/>
+
+  <!-- snout -->
+  <ellipse class="fur2" cx="160" cy="108" rx="22" ry="16"/>
+  <circle class="nose" cx="160" cy="105" r="4"/>
+
+  <!-- teeth -->
+  <rect class="tooth" x="153" y="113" width="8" height="12" rx="1"/>
+  <rect class="tooth" x="161" y="113" width="8" height="12" rx="1"/>
+
+  <!-- feet -->
+  <ellipse class="fur" cx="90" cy="176" rx="16" ry="10"/>
+  <ellipse class="fur" cx="150" cy="176" rx="18" ry="10"/>
+
+  <!-- subtle ground shadow -->
+  <ellipse cx="140" cy="200" rx="85" ry="10" fill="#000" opacity=".06"/>
+</svg>
