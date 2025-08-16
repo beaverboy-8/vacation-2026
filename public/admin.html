@@ -20,11 +20,12 @@
 <body>
   <h1>Admin — Vacation Vote 2026</h1>
   <p class="muted">Enter your admin key to fetch private results. Keep this page private.</p>
-  <div class="row">
-    <input id="k" type="password" placeholder="ADMIN_KEY" />
-    <button id="go">Load Results</button>
-  </div>
-  <div id="out"></div>
+<div class="row">
+  <input id="k" type="password" placeholder="ADMIN_KEY" />
+  <button id="go">Load Results</button>
+  <button id="reset" style="margin-left:8px">Reset votes (admin)</button>
+</div>
+<div id="out"></div>
   <script>
     const out = document.getElementById('out');
     document.getElementById('go').onclick = async () => {
@@ -55,6 +56,28 @@
         out.innerHTML = `<p>Network error.</p>`;
       }
     };
+
+    document.getElementById('reset').onclick = async () => {
+  const k = document.getElementById('k').value.trim();
+  if (!k) { alert('Enter ADMIN_KEY'); return; }
+  if (!confirm('Reset ALL votes? This cannot be undone.')) return;
+
+  const res = await fetch('/.netlify/functions/reset', {
+    method: 'POST',
+    headers: { 'x-admin-key': k }
+  });
+
+  if (!res.ok) {
+    const msg = await res.text().catch(() => '');
+    alert('Reset failed: ' + msg);
+    return;
+  }
+
+  const data = await res.json().catch(() => ({}));
+  alert(`Votes reset. Round is now ${data.round ?? 'updated'}.`);
+  // Clear the panel so you can load again
+  out.innerHTML = '';
+};
   </script>
 </body>
 </html>
