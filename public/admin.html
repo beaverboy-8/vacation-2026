@@ -41,7 +41,7 @@
         const list = (arr) => arr.map(x => `<li>${x}</li>`).join('');
         out.innerHTML = `
           <div class="grid">
-            <div class="card"><strong>Total votes:</strong> ${data.total} / 12</div>
+            <div class="card"><strong>Total votes:</strong> ${data.total} / ${data.cap}</div>
             <div class="card"><strong>San Diego:</strong> ${data.breakdown['San Diego']||0}</div>
             <div class="card"><strong>Monterey:</strong> ${data.breakdown['Monterey']||0}</div>
             <div class="card"><strong>Hawaii:</strong> ${data.breakdown['Hawaii']||0}</div>
