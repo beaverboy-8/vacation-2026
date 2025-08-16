@@ -11,7 +11,6 @@ export default async (req) => {
 
   const choice = String(body.choice || '').trim();
   let otherText = String(body.otherText || '').trim();
-
   if (!CHOICES.has(choice)) return jsonResponse({ message: 'Invalid choice' }, 400);
   if (choice === 'Other') {
     if (!otherText) return jsonResponse({ message: 'Other text required' }, 400);
@@ -23,31 +22,28 @@ export default async (req) => {
   const store = getStore(STORE_NAME);
   const key = 'data';
   const raw = await store.get(key, { consistency: 'strong' });
-  const data = raw ? JSON.parse(raw) : { total: 0, votes: [] };
+  const data = raw ? JSON.parse(raw) : { total: 0, votes: [], round: 1 };
 
   if ((data.total || 0) >= CAP) {
     return jsonResponse({ message: 'Voting cap reached', total: data.total }, 409);
   }
 
-  const vote = {
-    choice,
-    otherText,
-    ts: Date.now(),
-    ua: req.headers.get('user-agent')?.slice(0, 60) || ''
-  };
-
+  const vote = { choice, otherText, ts: Date.now(), ua: req.headers.get('user-agent')?.slice(0, 60) || '' };
   const updated = {
     total: (data.total || 0) + 1,
-    votes: [...(data.votes || []), vote]
+    votes: [...(data.votes || []), vote],
+    round: Number(data.round || 1)
   };
 
   await store.set(key, JSON.stringify(updated));
-  return new Response(JSON.stringify({ success: true, total: updated.total }), {
+
+  const cookieName = `vacay2026_voted_r${updated.round}`;
+  return new Response(JSON.stringify({ success: true, total: updated.total, round: updated.round }), {
     status: 200,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',
-      'Set-Cookie': 'vacay2026_voted=1; Path=/; Max-Age=31536000; SameSite=Lax'
+      'Set-Cookie': `${cookieName}=1; Path=/; Max-Age=31536000; SameSite=Lax`
     }
   });
 }
