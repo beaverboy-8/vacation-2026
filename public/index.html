@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vacation Vote 2026</title>
+  <style>
+    :root {
+      --bg: #0b1320;
+      --card: #121a2c;
+      --accent: #5ae3b4;
+      --text: #e9eef7;
+      --muted: #93a0b4;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: linear-gradient(120deg, #0b1320, #0e1c35); color: var(--text); }
+    .wrap { min-height: 100svh; display: grid; place-items: center; padding: 24px; }
+    .card { width: 100%; max-width: 640px; background: var(--card); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    h1 { font-size: clamp(22px, 4vw, 28px); margin: 0 0 10px; letter-spacing: .3px; }
+    p.muted { color: var(--muted); margin: 0 0 18px; }
+    .options { display: grid; gap: 10px; margin: 18px 0 10px; }
+    label.opt { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; cursor: pointer; }
+    label.opt:hover { border-color: rgba(255,255,255,.18); }
+    input[type="radio"] { accent-color: var(--accent); width: 18px; height: 18px; }
+    .other { margin: 8px 0 0 34px; display: none; }
+    .other input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.15); background: #0c1426; color: var(--text); }
+    .actions { display: flex; gap: 10px; margin-top: 18px; align-items: center; }
+    button { appearance: none; border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; cursor: pointer; background: var(--accent); color: #062116; }
+    button[disabled] { opacity: .6; cursor: not-allowed; }
+    .status { margin-left: auto; color: var(--muted); font-size: 14px; }
+    .notice { margin-top: 10px; font-size: 14px; color: var(--muted); }
+    .ok { color: #77f3c9; }
+    .err { color: #ff8a8a; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Where should we go on vacation in 2026?</h1>
+      <p class="muted">Pick one option. Your choice stays private — this page only shows how many votes have been submitted.</p>
+
+      <form id="voteForm">
+        <div class="options">
+          <label class="opt"><input type="radio" name="dest" value="San Diego" required> San Diego</label>
+          <label class="opt"><input type="radio" name="dest" value="Monterey"> Monterey</label>
+          <label class="opt"><input type="radio" name="dest" value="Hawaii"> Hawaii</label>
+          <label class="opt"><input type="radio" name="dest" value="Other"> Other</label>
+          <div class="other" id="otherWrap">
+            <input id="otherText" type="text" maxlength="80" placeholder="Type your destination (max 80 chars)" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="submitBtn" type="submit">Submit vote</button>
+          <span class="status" id="status">0/12 submitted</span>
+        </div>
+      </form>
+
+      <div class="notice" id="notice"></div>
+    </div>
+  </div>
+
+  <script>
+    const FORM = document.getElementById('voteForm');
+    const OTHER_WRAP = document.getElementById('otherWrap');
+    const OTHER_TEXT = document.getElementById('otherText');
+    const STATUS = document.getElementById('status');
+    const BTN = document.getElementById('submitBtn');
+    const NOTICE = document.getElementById('notice');
+    const VOTE_KEY = 'vacay2026_voted';
+    const CAP = 12;
+
+    function setNotice(msg, ok=false) {
+      NOTICE.textContent = msg;
+      NOTICE.className = 'notice ' + (ok ? 'ok' : 'err');
+    }
+
+    function showOther(show) {
+      OTHER_WRAP.style.display = show ? 'block' : 'none';
+      if (!show) OTHER_TEXT.value = '';
+    }
+
+    function getSelected() {
+      const el = document.querySelector('input[name="dest"]:checked');
+      return el?.value || null;
+    }
+
+    function disableForm() {
+      BTN.disabled = true;
+      FORM.querySelectorAll('input').forEach(i => i.disabled = true);
+    }
+
+    function enableForm() {
+      BTN.disabled = false;
+      FORM.querySelectorAll('input').forEach(i => i.disabled = false);
+    }
+
+    async function refreshCount() {
+      try {
+        const res = await fetch('/.netlify/functions/stats', { cache: 'no-store' });
+        const data = await res.json();
+        STATUS.textContent = `${data.total}/12 submitted`;
+        if (data.total >= CAP) {
+          disableForm();
+          setNotice('Voting is closed — the cap of 12 votes has been reached.', true);
+        }
+      } catch(e) {
+        console.error(e);
+      }
+    }
+
+    document.querySelectorAll('input[name="dest"]').forEach(r => {
+      r.addEventListener('change', () => showOther(r.value === 'Other'));
+    });
+
+    (async () => {
+      await refreshCount();
+      if (localStorage.getItem(VOTE_KEY) || document.cookie.includes('vacay2026_voted=1')) {
+        disableForm();
+        setNotice('You\'ve already submitted a vote from this browser. Thanks! 😊', true);
+      }
+    })();
+
+    FORM.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const choice = getSelected();
+      if (!choice) return;
+      let otherText = '';
+      if (choice === 'Other') {
+        otherText = (OTHER_TEXT.value || '').trim();
+        if (!otherText) { setNotice('Please type your destination for "Other".'); return; }
+      }
+
+      BTN.disabled = true;
+      setNotice('Submitting…');
+      try {
+        const res = await fetch('/.netlify/functions/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ choice, otherText })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 409) {
+            setNotice('Voting is closed — the cap of 12 votes has been reached.');
+          } else if (res.status === 429) {
+            setNotice('This browser already voted.');
+          } else {
+            setNotice(data.message || 'Something went wrong. Please try again.');
+          }
+          BTN.disabled = false;
+          await refreshCount();
+          return;
+        }
+
+        localStorage.setItem(VOTE_KEY, '1');
+        document.cookie = 'vacay2026_voted=1; Path=/; Max-Age=31536000; SameSite=Lax';
+        setNotice('Thanks — your vote was recorded! 🎉', true);
+        disableForm();
+        STATUS.textContent = `${data.total}/12 submitted`;
+      } catch (e) {
+        console.error(e);
+        setNotice('Network error. Please try again.');
+        BTN.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
